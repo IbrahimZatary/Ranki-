@@ -32,7 +32,7 @@ namespace Ranki.Services.Implementations
             var sb = new StringBuilder();
             sb.AppendLine($"RANKI VISIBILITY REPORT");
             sb.AppendLine($"======================");
-            sb.AppendLine($"Business Name: {profile?.CompanyName}");
+            sb.AppendLine($"Business Name: {profile?.BusinessName}");
             sb.AppendLine($"Industry: {profile?.Industry}");
             sb.AppendLine($"Visibility Score: {session.VisibilityScore}/100");
             sb.AppendLine();
@@ -45,7 +45,7 @@ namespace Ranki.Services.Implementations
             sb.AppendLine("Recommendations:");
             foreach (var r in recommendations)
             {
-                sb.AppendLine($"- [{r.Priority}] {r.Title}: {r.Description}");
+                sb.AppendLine($"- [Priority {r.Priority}] {r.Category}: {r.RecommendationText}");
             }
 
             // In a real application, you would use a library like iText7 or QuestPDF to convert this string/HTML to a real PDF.

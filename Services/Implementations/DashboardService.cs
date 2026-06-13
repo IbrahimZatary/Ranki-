@@ -24,7 +24,7 @@ namespace Ranki.Services.Implementations
                 .FirstOrDefaultAsync();
 
             var pendingRecs = await _context.Recommendations
-                .Where(r => r.UserId == userId && !r.IsImplemented)
+                .Where(r => r.UserId == userId && !r.IsCompleted)
                 .CountAsync();
 
             var competitorsCount = await _context.Competitors

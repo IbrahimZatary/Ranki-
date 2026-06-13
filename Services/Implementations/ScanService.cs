@@ -152,7 +152,7 @@ namespace Ranki.Services.Implementations
                 session.Progress = 50;
                 await _context.SaveChangesAsync();
 
-                var promptC = $"Given the business {profile.CompanyName} in {profile.Industry}, generate 5 fake search results (citations) showing how they might appear on Google or AI summaries. For each, return: Source (string), Snippet (string), IsPositive (boolean). Return strictly a JSON array of objects.";
+                var promptC = $"Given the business {profile.BusinessName} in {profile.Industry}, generate 5 fake search results (citations) showing how they might appear on Google or AI summaries. For each, return: Source (string), Snippet (string), IsPositive (boolean). Return strictly a JSON array of objects.";
                 var responseC = await _gemini.GenerateContentAsync(promptC);
                 var jsonStrC = responseC.Replace("```json", "").Replace("```", "").Trim();
                 var citationsList = JsonSerializer.Deserialize<List<CitationDto>>(jsonStrC, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<CitationDto>();
@@ -162,11 +162,10 @@ namespace Ranki.Services.Implementations
                 {
                     UserId = session.UserId,
                     QuestionId = newQuestions.FirstOrDefault()?.Id ?? 0, // Mock association
-                    AiEngine = c.Source?.Length > 50 ? c.Source.Substring(0, 50) : (c.Source ?? "Google"),
-                    Rank = c.IsPositive ? 1 : 10,
-                    SummarySnippet = c.Snippet,
-                    Sentiment = c.IsPositive ? "Positive" : "Negative",
-                    CreatedAt = DateTime.UtcNow
+                    UserWasCited = c.IsPositive,
+                    ResponseSnippet = c.Snippet?.Length > 500 ? c.Snippet.Substring(0, 500) : c.Snippet,
+                    GeminiResponse = c.Source,
+                    ScanDate = DateTime.UtcNow
                 }).ToList();
                 _context.ScanResults.AddRange(scanResults);
                 await _context.SaveChangesAsync();
@@ -178,7 +177,7 @@ namespace Ranki.Services.Implementations
 
                 session.VisibilityScore = citationsList.Count(c => c.IsPositive) * 20;
 
-                var promptD = $"Based on a visibility score of {session.VisibilityScore} out of 100 for {profile.CompanyName}, generate 3 actionable recommendations to improve AI search visibility. For each: Title (string), Description (string), Priority (High/Medium/Low). Return strictly a JSON array of objects.";
+                var promptD = $"Based on a visibility score of {session.VisibilityScore} out of 100 for {profile.BusinessName}, generate 3 actionable recommendations to improve AI search visibility. For each: Title (string), Description (string), Priority (High/Medium/Low). Return strictly a JSON array of objects.";
                 var responseD = await _gemini.GenerateContentAsync(promptD);
                 var jsonStrD = responseD.Replace("```json", "").Replace("```", "").Trim();
                 var recsList = JsonSerializer.Deserialize<List<RecommendationDto>>(jsonStrD, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<RecommendationDto>();
@@ -186,10 +185,10 @@ namespace Ranki.Services.Implementations
                 var recommendations = recsList.Select(r => new Recommendation
                 {
                     UserId = session.UserId,
-                    Title = r.Title?.Length > 255 ? r.Title.Substring(0, 255) : (r.Title ?? "Recommendation"),
-                    Description = r.Description,
-                    Priority = r.Priority?.Length > 50 ? r.Priority.Substring(0, 50) : (r.Priority ?? "Medium"),
-                    IsImplemented = false,
+                    RecommendationText = r.Title?.Length > 1000 ? r.Title.Substring(0, 1000) : (r.Title ?? "Recommendation"),
+                    Category = r.Description?.Length > 100 ? r.Description.Substring(0, 100) : r.Description,
+                    Priority = 1,
+                    IsCompleted = false,
                     CreatedAt = DateTime.UtcNow
                 }).ToList();
                 _context.Recommendations.AddRange(recommendations);
@@ -201,11 +200,11 @@ namespace Ranki.Services.Implementations
                 await _context.SaveChangesAsync();
 
                 var robotsTxt = "User-agent: *\nAllow: /\nSitemap: https://yourdomain.com/sitemap.xml";
-                var llmsTxt = $"# LLM Optimization File for {profile.CompanyName}\nCompany: {profile.CompanyName}\nIndustry: {profile.Industry}\nCountry: {profile.Country}";
+                var llmsTxt = $"# LLM Optimization File for {profile.BusinessName}\nCompany: {profile.BusinessName}\nIndustry: {profile.Industry}\nCountry: {profile.Country}";
 
                 _context.GeneratedFiles.AddRange(
-                    new GeneratedFile { UserId = session.UserId, FileType = "robots.txt", FileContent = robotsTxt, CreatedAt = DateTime.UtcNow },
-                    new GeneratedFile { UserId = session.UserId, FileType = "llms.txt", FileContent = llmsTxt, CreatedAt = DateTime.UtcNow }
+                    new GeneratedFile { UserId = session.UserId, FileType = "robots.txt", Content = robotsTxt, CreatedAt = DateTime.UtcNow },
+                    new GeneratedFile { UserId = session.UserId, FileType = "llms.txt", Content = llmsTxt, CreatedAt = DateTime.UtcNow }
                 );
 
                 session.Status = "Completed";
