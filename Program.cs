@@ -68,6 +68,7 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<ISettingsService, SettingsService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // Register Global Exception Handler
 builder.Services.AddExceptionHandler<Ranki.Middleware.GlobalExceptionHandler>();
