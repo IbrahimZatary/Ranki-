@@ -1,0 +1,6 @@
+@Ranki_HostAddress = http://localhost:5081
+
+GET {{Ranki_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
