@@ -128,4 +128,23 @@ app.UseHangfireDashboard();
 
 app.MapControllers();
 
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    if (!context.Users.Any(u => u.Email == "admin@ranki.com"))
+    {
+        var adminUser = new Ranki.Models.User
+        {
+            Email = "admin@ranki.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
+            FullName = "System Admin",
+            Role = "Admin",
+            IsEmailVerified = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        context.Users.Add(adminUser);
+        context.SaveChanges();
+    }
+}
+
 app.Run();
