@@ -28,27 +28,27 @@ namespace Ranki.Data
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email)
                 .IsUnique();
-                
+
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Role);
-                
+
             modelBuilder.Entity<Subscription>()
                 .HasIndex(s => s.Status);
 
             modelBuilder.Entity<ScanResult>()
                 .HasIndex(s => s.ScanDate)
                 .IsDescending();
-                
+
             modelBuilder.Entity<Recommendation>()
                 .HasIndex(r => r.Priority);
-                
+
             modelBuilder.Entity<ScanSession>()
                 .HasIndex(s => s.Status);
-                
+
             modelBuilder.Entity<ActivityLog>()
                 .HasIndex(a => a.CreatedAt)
                 .IsDescending();
-                
+
             modelBuilder.Entity<Notification>()
                 .HasIndex(n => n.IsRead);
         }

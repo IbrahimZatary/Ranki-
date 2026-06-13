@@ -108,7 +108,7 @@ namespace Ranki.Services.Implementations
 
                 var promptA = $"You are a customer research expert. Generate 50 high-intent questions that real customers ask when searching for {profile.Industry} services in {profile.Country}. Categories: best/fastest/cheapest/most reliable, comparison questions (X vs Y), problem-specific, recommendation questions. Return strictly a JSON array of strings.";
                 var responseA = await _gemini.GenerateContentAsync(promptA);
-                
+
                 var jsonStrA = responseA.Replace("```json", "").Replace("```", "").Trim();
                 var questionsList = JsonSerializer.Deserialize<List<string>>(jsonStrA) ?? new List<string>();
 
@@ -122,7 +122,7 @@ namespace Ranki.Services.Implementations
 
                 _context.Questions.AddRange(newQuestions);
                 await _context.SaveChangesAsync();
-                
+
                 // STEP B: Discover Competitors
                 session.CurrentStep = "Competitors discovered";
                 session.Progress = 20;
@@ -147,8 +147,75 @@ namespace Ranki.Services.Implementations
                 _context.Competitors.AddRange(newCompetitors);
                 await _context.SaveChangesAsync();
 
+                // STEP C: Citation Scanning (Mocked via Gemini for Stage 6)
+                session.CurrentStep = "Scanning citations";
+                session.Progress = 50;
+                await _context.SaveChangesAsync();
+
+                var promptC = $"Given the business {profile.CompanyName} in {profile.Industry}, generate 5 fake search results (citations) showing how they might appear on Google or AI summaries. For each, return: Source (string), Snippet (string), IsPositive (boolean). Return strictly a JSON array of objects.";
+                var responseC = await _gemini.GenerateContentAsync(promptC);
+                var jsonStrC = responseC.Replace("```json", "").Replace("```", "").Trim();
+                var citationsList = JsonSerializer.Deserialize<List<CitationDto>>(jsonStrC, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<CitationDto>();
+
+                // Convert to ScanResult and save
+                var scanResults = citationsList.Select(c => new ScanResult
+                {
+                    UserId = session.UserId,
+                    QuestionId = newQuestions.FirstOrDefault()?.Id ?? 0, // Mock association
+                    AiEngine = c.Source?.Length > 50 ? c.Source.Substring(0, 50) : (c.Source ?? "Google"),
+                    Rank = c.IsPositive ? 1 : 10,
+                    SummarySnippet = c.Snippet,
+                    Sentiment = c.IsPositive ? "Positive" : "Negative",
+                    CreatedAt = DateTime.UtcNow
+                }).ToList();
+                _context.ScanResults.AddRange(scanResults);
+                await _context.SaveChangesAsync();
+
+                // STEP D: Visibility scoring, recommendations (Stage 7)
+                session.CurrentStep = "Generating recommendations";
+                session.Progress = 75;
+                await _context.SaveChangesAsync();
+
+                session.VisibilityScore = citationsList.Count(c => c.IsPositive) * 20;
+
+                var promptD = $"Based on a visibility score of {session.VisibilityScore} out of 100 for {profile.CompanyName}, generate 3 actionable recommendations to improve AI search visibility. For each: Title (string), Description (string), Priority (High/Medium/Low). Return strictly a JSON array of objects.";
+                var responseD = await _gemini.GenerateContentAsync(promptD);
+                var jsonStrD = responseD.Replace("```json", "").Replace("```", "").Trim();
+                var recsList = JsonSerializer.Deserialize<List<RecommendationDto>>(jsonStrD, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<RecommendationDto>();
+
+                var recommendations = recsList.Select(r => new Recommendation
+                {
+                    UserId = session.UserId,
+                    Title = r.Title?.Length > 255 ? r.Title.Substring(0, 255) : (r.Title ?? "Recommendation"),
+                    Description = r.Description,
+                    Priority = r.Priority?.Length > 50 ? r.Priority.Substring(0, 50) : (r.Priority ?? "Medium"),
+                    IsImplemented = false,
+                    CreatedAt = DateTime.UtcNow
+                }).ToList();
+                _context.Recommendations.AddRange(recommendations);
+                await _context.SaveChangesAsync();
+
+                // STEP E: robots.txt and llms.txt generator (Stage 8)
+                session.CurrentStep = "Generating files";
+                session.Progress = 90;
+                await _context.SaveChangesAsync();
+
+                var robotsTxt = "User-agent: *\nAllow: /\nSitemap: https://yourdomain.com/sitemap.xml";
+                var llmsTxt = $"# LLM Optimization File for {profile.CompanyName}\nCompany: {profile.CompanyName}\nIndustry: {profile.Industry}\nCountry: {profile.Country}";
+
+                _context.GeneratedFiles.AddRange(
+                    new GeneratedFile { UserId = session.UserId, FileType = "robots.txt", FileContent = robotsTxt, CreatedAt = DateTime.UtcNow },
+                    new GeneratedFile { UserId = session.UserId, FileType = "llms.txt", FileContent = llmsTxt, CreatedAt = DateTime.UtcNow }
+                );
+
+                session.Status = "Completed";
+                session.CurrentStep = "Scan complete";
+                session.Progress = 100;
+                session.CompletedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 session.Status = "Failed";
                 session.ErrorMessage = ex.Message;
@@ -160,6 +227,20 @@ namespace Ranki.Services.Implementations
         {
             public string Name { get; set; } = string.Empty;
             public string? WebsiteUrl { get; set; }
+        }
+
+        private class CitationDto
+        {
+            public string? Source { get; set; }
+            public string? Snippet { get; set; }
+            public bool IsPositive { get; set; }
+        }
+
+        private class RecommendationDto
+        {
+            public string? Title { get; set; }
+            public string? Description { get; set; }
+            public string? Priority { get; set; }
         }
     }
 }
