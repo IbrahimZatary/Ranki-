@@ -65,6 +65,7 @@ builder.Services.AddScoped<IScanService, ScanService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddScoped<IBusinessProfileService, BusinessProfileService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 
 // Register Global Exception Handler
 builder.Services.AddExceptionHandler<Ranki.Middleware.GlobalExceptionHandler>();
