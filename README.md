@@ -1,7 +1,7 @@
 # Ranki - AI Visibility Intelligence Platform (Backend)
 
 Ranki is a backend ASP.NET Core 8 Web API platform for generating AI visibility reports. It discovers competitors, generates search intents, and provides actionable recommendations to improve AI search visibility using the Gemini API.
-
+<!-- check -->
 ## Features
 
 - **Authentication**: JWT-based authentication with `Admin` and `BusinessOwner` roles.

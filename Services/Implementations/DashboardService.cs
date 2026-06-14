@@ -31,13 +31,37 @@ namespace Ranki.Services.Implementations
                 .Where(c => c.UserId == userId)
                 .CountAsync();
 
+            var competitors = await _context.Competitors
+                .Where(c => c.UserId == userId)
+                .OrderByDescending(c => c.CreatedAt)
+                .Take(5)
+                .Select(c => new { c.Name, c.WebsiteUrl })
+                .ToListAsync();
+
+            var recommendations = await _context.Recommendations
+                .Where(r => r.UserId == userId)
+                .OrderByDescending(r => r.CreatedAt)
+                .Take(5)
+                .Select(r => new { r.RecommendationText, r.Category, r.Priority, r.IsCompleted })
+                .ToListAsync();
+
+            var generatedFiles = await _context.GeneratedFiles
+                .Where(g => g.UserId == userId)
+                .OrderByDescending(g => g.CreatedAt)
+                .Take(2)
+                .Select(g => new { g.FileType, g.Content })
+                .ToListAsync();
+
             return new
             {
                 HasProfile = profile != null,
                 LatestVisibilityScore = latestScan?.VisibilityScore ?? 0,
                 LastScanDate = latestScan?.CompletedAt,
                 PendingRecommendations = pendingRecs,
-                CompetitorsDiscovered = competitorsCount
+                CompetitorsDiscovered = competitorsCount,
+                Competitors = competitors,
+                Recommendations = recommendations,
+                GeneratedFiles = generatedFiles
             };
         }
 

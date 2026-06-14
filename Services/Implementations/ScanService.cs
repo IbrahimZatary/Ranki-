@@ -59,7 +59,8 @@ namespace Ranki.Services.Implementations
             {
                 session.Status,
                 session.Progress,
-                session.CurrentStep
+                session.CurrentStep,
+                session.ErrorMessage
             };
         }
 
@@ -128,6 +129,8 @@ namespace Ranki.Services.Implementations
                 session.Progress = 20;
                 await _context.SaveChangesAsync();
 
+                await Task.Delay(3000); // Prevent Gemini Rate Limit
+
                 var promptB = $"List the top 10 {profile.Industry} companies in {profile.Country} that would appear in AI search results. For each: name, websiteUrl. Return strictly a JSON array of objects with properties 'name' and 'websiteUrl'.";
                 var responseB = await _gemini.GenerateContentAsync(promptB);
 
@@ -151,6 +154,8 @@ namespace Ranki.Services.Implementations
                 session.CurrentStep = "Scanning citations";
                 session.Progress = 50;
                 await _context.SaveChangesAsync();
+
+                await Task.Delay(3000); // Prevent Gemini Rate Limit
 
                 var promptC = $"Given the business {profile.BusinessName} in {profile.Industry}, generate 5 fake search results (citations) showing how they might appear on Google or AI summaries. For each, return: Source (string), Snippet (string), IsPositive (boolean). Return strictly a JSON array of objects.";
                 var responseC = await _gemini.GenerateContentAsync(promptC);
@@ -177,6 +182,8 @@ namespace Ranki.Services.Implementations
 
                 session.VisibilityScore = citationsList.Count(c => c.IsPositive) * 20;
 
+                await Task.Delay(3000); // Prevent Gemini Rate Limit
+
                 var promptD = $"Based on a visibility score of {session.VisibilityScore} out of 100 for {profile.BusinessName}, generate 3 actionable recommendations to improve AI search visibility. For each: Title (string), Description (string), Priority (High/Medium/Low). Return strictly a JSON array of objects.";
                 var responseD = await _gemini.GenerateContentAsync(promptD);
                 var jsonStrD = responseD.Replace("```json", "").Replace("```", "").Trim();
@@ -194,17 +201,33 @@ namespace Ranki.Services.Implementations
                 _context.Recommendations.AddRange(recommendations);
                 await _context.SaveChangesAsync();
 
-                // STEP E: robots.txt and llms.txt generator (Stage 8)
+                // STEP E: robots.txt, llms.txt and full report generator (Stage 8)
                 session.CurrentStep = "Generating files";
                 session.Progress = 90;
                 await _context.SaveChangesAsync();
 
-                var robotsTxt = "User-agent: *\nAllow: /\nSitemap: https://yourdomain.com/sitemap.xml";
-                var llmsTxt = $"# LLM Optimization File for {profile.BusinessName}\nCompany: {profile.BusinessName}\nIndustry: {profile.Industry}\nCountry: {profile.Country}";
+                await Task.Delay(3000); // Prevent Gemini Rate Limit
+
+                var promptRobots = $"Write a customized 'robots.txt' file for a business named {profile.BusinessName} in the {profile.Industry} industry whose website is {profile.WebsiteUrl}. Ensure it allows all AI bots (like ChatGPT-User, Google-Extended, PerplexityBot) to crawl the site, and sets up a standard sitemap. Return strictly the plain text of the file without markdown code blocks.";
+                var robotsTxtResponse = await _gemini.GenerateContentAsync(promptRobots);
+                var robotsTxt = robotsTxtResponse.Replace("```txt", "").Replace("```text", "").Replace("```", "").Trim();
+
+                await Task.Delay(3000); // Prevent Gemini Rate Limit
+
+                var promptLlms = $"Write a comprehensive 'llms.txt' file for {profile.BusinessName} (Industry: {profile.Industry}). Include details about their products/services: {profile.ProductsServices}, target customer: {profile.TargetCustomer}. This file is meant to be read by Large Language Models to optimize AI visibility. Provide clear sections, bullet points, and actionable details. Return strictly the plain text without markdown code blocks.";
+                var llmsTxtResponse = await _gemini.GenerateContentAsync(promptLlms);
+                var llmsTxt = llmsTxtResponse.Replace("```txt", "").Replace("```text", "").Replace("```", "").Trim();
+
+                await Task.Delay(3000); // Prevent Gemini Rate Limit
+
+                var promptReport = $"Write a comprehensive, professional AI Visibility Full Report for {profile.BusinessName}. Industry: {profile.Industry}. Include an executive summary, analysis of their {session.VisibilityScore}% visibility score, their products ({profile.ProductsServices}), detail out their top 3 strategic recommendations, AND generate exactly 5 FAQ questions they need to add to their website to boost AI visibility. Return strictly the plain text without markdown code blocks.";
+                var reportResponse = await _gemini.GenerateContentAsync(promptReport);
+                var fullReportTxt = reportResponse.Replace("```txt", "").Replace("```text", "").Replace("```", "").Trim();
 
                 _context.GeneratedFiles.AddRange(
                     new GeneratedFile { UserId = session.UserId, FileType = "robots.txt", Content = robotsTxt, CreatedAt = DateTime.UtcNow },
-                    new GeneratedFile { UserId = session.UserId, FileType = "llms.txt", Content = llmsTxt, CreatedAt = DateTime.UtcNow }
+                    new GeneratedFile { UserId = session.UserId, FileType = "llms.txt", Content = llmsTxt, CreatedAt = DateTime.UtcNow },
+                    new GeneratedFile { UserId = session.UserId, FileType = "full_report.txt", Content = fullReportTxt, CreatedAt = DateTime.UtcNow }
                 );
 
                 session.Status = "Completed";
@@ -217,7 +240,7 @@ namespace Ranki.Services.Implementations
             catch (Exception ex)
             {
                 session.Status = "Failed";
-                session.ErrorMessage = ex.Message;
+                session.ErrorMessage = ex.Message.Length > 500 ? ex.Message.Substring(0, 500) : ex.Message;
                 await _context.SaveChangesAsync();
             }
         }

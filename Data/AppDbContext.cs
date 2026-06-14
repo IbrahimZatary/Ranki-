@@ -20,6 +20,7 @@ namespace Ranki.Data
         public DbSet<ScanSession> ScanSessions { get; set; }
         public DbSet<ActivityLog> ActivityLogs { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<IdempotencyRecord> IdempotencyRecords { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -51,6 +52,10 @@ namespace Ranki.Data
 
             modelBuilder.Entity<Notification>()
                 .HasIndex(n => n.IsRead);
+
+            modelBuilder.Entity<IdempotencyRecord>()
+                .HasIndex(i => i.Key)
+                .IsUnique();
         }
     }
 }
