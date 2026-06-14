@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth cursor-none;
+  }
+  body {
+    @apply bg-background text-textPrimary font-body antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading tracking-tight;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-6 py-3 bg-accent text-textPrimary font-medium rounded-btn hover:shadow-tinted transition-shadow duration-300;
+  }
+  .btn-secondary {
+    @apply px-6 py-3 border border-border text-textPrimary font-medium rounded-btn hover:bg-gray-50 transition-colors duration-300;
+  }
+  .card {
+    @apply bg-white border border-border rounded-xl p-6 shadow-sm hover:shadow-deep transition-shadow duration-300;
+  }
+  .input-field {
+    @apply w-full px-4 py-3 border border-border rounded-btn focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all;
+  }
+}
